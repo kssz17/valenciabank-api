@@ -10,6 +10,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
 
 @Configuration
 public class SecurityConfig {
@@ -38,8 +41,18 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()      // registro y login son publicos
                         .requestMatchers("/admin/**").hasRole("ADMIN") // solo ADMIN (busca la autoridad ROLE_ADMIN)
                         .anyRequest().authenticated())                // el resto exige estar autenticado
+                // Respuestas JSON limpias cuando falla la seguridad (en vez de cuerpo vacio).
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) -> writeError(res, HttpServletResponse.SC_UNAUTHORIZED, "No autenticado"))
+                        .accessDeniedHandler((req, res, e) -> writeError(res, HttpServletResponse.SC_FORBIDDEN, "Acceso denegado")))
                 // Nuestro filtro corre ANTES del de usuario/contrasena de Spring.
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"status\":" + status + ",\"error\":\"" + message + "\"}");
     }
 }
