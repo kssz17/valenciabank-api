@@ -27,20 +27,29 @@ public class TransferService {
         this.transactionRepository = transactionRepository;
     }
 
-    // @Transactional: restar y sumar son UNA unidad. Si algo falla, rollback total.
     @Transactional
     public TransferResponse transfer(String email, TransferRequest request) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
-        Account origen = accountRepository.findByUser_Id(user.getId())
+        Long origenId = accountRepository.findIdByUserId(user.getId())
                 .orElseThrow(() -> new IllegalStateException("La cuenta origen no existe"));
-        Account destino = accountRepository.findByAccountNumber(request.toAccountNumber())
+        Long destinoId = accountRepository.findIdByAccountNumber(request.toAccountNumber())
                 .orElseThrow(() -> new IllegalStateException("La cuenta destino no existe"));
 
-        if (origen.getId().equals(destino.getId())) {
+        if (origenId.equals(destinoId)) {
             throw new IllegalStateException("No puedes transferirte a ti mismo");
         }
-        // compareTo (no equals): compara el valor real del dinero, ignorando la escala.
+
+        // Bloqueamos SIEMPRE en el mismo orden (id ascendente) -> nunca hay deadlock cruzado.
+        Long firstId = Math.min(origenId, destinoId);
+        Long secondId = Math.max(origenId, destinoId);
+        Account first = accountRepository.findByIdForUpdate(firstId)
+                .orElseThrow(() -> new IllegalStateException("Cuenta no encontrada"));
+        Account second = accountRepository.findByIdForUpdate(secondId)
+                .orElseThrow(() -> new IllegalStateException("Cuenta no encontrada"));
+        Account origen = origenId.equals(firstId) ? first : second;
+        Account destino = origenId.equals(firstId) ? second : first;
+
         if (origen.getBalance().compareTo(request.amount()) < 0) {
             throw new IllegalStateException("Saldo insuficiente");
         }
