@@ -7,8 +7,12 @@ import com.valenciabank.api.dto.RegisterResponse;
 import com.valenciabank.api.model.Account;
 import com.valenciabank.api.model.Role;
 import com.valenciabank.api.model.User;
+import com.valenciabank.api.exception.DuplicateEmailException;
+import com.valenciabank.api.exception.ResourceNotFoundException;
 import com.valenciabank.api.repository.AccountRepository;
 import com.valenciabank.api.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +24,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     // Regalo de bienvenida en dinero de juguete, para que la demo sea usable al instante.
     private static final BigDecimal SALDO_INICIAL = new BigDecimal("1000.00");
@@ -49,8 +55,9 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
+        log.info("Login correcto: {}", user.getEmail());
         String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token);
     }
@@ -59,7 +66,7 @@ public class AuthService {
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalStateException("El email ya esta registrado");
+            throw new DuplicateEmailException("El email ya esta registrado");
         }
 
         User user = new User();
@@ -74,6 +81,7 @@ public class AuthService {
         account.setUser(user);
         account = accountRepository.save(account);
 
+        log.info("Registro: usuario {} (cuenta {}) creado", user.getEmail(), account.getAccountNumber());
         return new RegisterResponse(user.getId(), user.getEmail(),
                 account.getAccountNumber(), account.getBalance());
     }

@@ -3,12 +3,15 @@ package com.valenciabank.api.service;
 import com.valenciabank.api.dto.AccountResponse;
 import com.valenciabank.api.dto.DepositRequest;
 import com.valenciabank.api.dto.UserSummaryResponse;
+import com.valenciabank.api.exception.ResourceNotFoundException;
 import com.valenciabank.api.model.Account;
 import com.valenciabank.api.model.Transaction;
 import com.valenciabank.api.model.TxType;
 import com.valenciabank.api.repository.AccountRepository;
 import com.valenciabank.api.repository.TransactionRepository;
 import com.valenciabank.api.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +19,8 @@ import java.util.List;
 
 @Service
 public class AdminService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
@@ -40,7 +45,7 @@ public class AdminService {
     @Transactional
     public AccountResponse deposit(DepositRequest request) {
         Account account = accountRepository.findByAccountNumber(request.accountNumber())
-                .orElseThrow(() -> new IllegalStateException("Cuenta no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cuenta no encontrada"));
 
         // BigDecimal.add: suma exacta, nunca aritmetica de double.
         account.setBalance(account.getBalance().add(request.amount()));
@@ -53,6 +58,8 @@ public class AdminService {
         tx.setType(TxType.DEPOSIT);
         transactionRepository.save(tx);
 
+        log.info("Ingreso: {} a la cuenta {} (nuevo saldo {})",
+                request.amount(), account.getAccountNumber(), account.getBalance());
         return new AccountResponse(account.getAccountNumber(), account.getBalance());
     }
 }

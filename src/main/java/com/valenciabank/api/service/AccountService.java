@@ -2,6 +2,7 @@ package com.valenciabank.api.service;
 
 import com.valenciabank.api.dto.AccountResponse;
 import com.valenciabank.api.dto.TransactionResponse;
+import com.valenciabank.api.exception.ResourceNotFoundException;
 import com.valenciabank.api.model.Account;
 import com.valenciabank.api.model.User;
 import com.valenciabank.api.repository.AccountRepository;
@@ -49,8 +50,8 @@ public class AccountService {
 
     private Account cuentaDe(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
         return accountRepository.findByUser_Id(user.getId())
-                .orElseThrow(() -> new IllegalStateException("La cuenta no existe"));
+                .orElseThrow(() -> new ResourceNotFoundException("La cuenta no existe"));
     }
 }
