@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()      // registro y login son publicos
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll() // documentacion
                         .requestMatchers("/admin/**").hasRole("ADMIN") // solo ADMIN (busca la autoridad ROLE_ADMIN)
                         .anyRequest().authenticated())                // el resto exige estar autenticado
                 // Respuestas JSON limpias cuando falla la seguridad (en vez de cuerpo vacio).
