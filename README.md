@@ -1,65 +1,102 @@
 # ValenciaBank API
 
-API REST de un banco **simulado**. Dinero de juguete, usuarios reales de una demo. La hice para
-aprender backend de verdad (Java + Spring Boot + MySQL) y, sobre todo, para poder explicar cada
-decisión en una entrevista.
+API REST de un banco **simulado**: registro, login con JWT, consulta de saldo e historial, y
+**transferencias con integridad transaccional**. La hice para aprender backend de verdad (Java +
+Spring Boot + MySQL) y, sobre todo, para poder explicar cada decisión en una entrevista.
 
-> ⚠️ **Es una demo.** No maneja dinero ni datos bancarios reales. No pidas ni metas contraseñas de
-> otros servicios, datos de tarjetas ni DNI reales: todo son datos de prueba.
+> ⚠️ **Es una demo.** Dinero de juguete, usuarios reales solo de una demo. No maneja dinero ni datos
+> bancarios reales. Nunca metas contraseñas de otros servicios, tarjetas ni DNI reales.
 
-## Qué hace (MVP)
+## Qué hace
 
-- Registro e inicio de sesión (login seguro con token JWT).
-- Cada usuario tiene una cuenta con un saldo inicial simulado.
-- Consultar saldo y ver el historial de movimientos.
+- **Registro y login** con contraseña hasheada (BCrypt) y token **JWT**.
+- Cada usuario tiene una **cuenta** con saldo inicial simulado.
+- Consultar **saldo** y **historial** de movimientos (paginado).
 - **Transferir** dinero a otra cuenta del banco.
-- Un rol admin puede listar usuarios e "ingresar" saldo de prueba.
+- Un **admin** puede listar usuarios e **ingresar** saldo de prueba.
 
-La pieza central es la **transferencia**: que el dinero nunca se cree ni se pierda, ni siquiera con
-operaciones simultáneas.
+La pieza central es la **transferencia**: atómica, validada y segura ante operaciones simultáneas.
 
 ## Stack y por qué
 
 | Tecnología | Versión | Por qué |
 |---|---|---|
-| Java | 21 (LTS) | Es el LTS que tengo instalado y el más moderno. 17 también valía; no tenía sentido fijar una versión más vieja. |
-| Spring Boot | 3.5.16 | Es lo que las empresas tienen hoy en producción (banca/consultoría). Boot 4 ya existe, pero casi nadie lo usa aún; para empleabilidad, 3.x es la apuesta segura. |
-| MySQL | — | Base de datos relacional estándar. El dinero vive en tablas con relaciones claras. |
-| Maven | wrapper 3.9.9 | Uso el *wrapper* (`mvnw`) para no depender de tener Maven instalado en la máquina. |
+| Java | 21 (LTS) | El LTS vigente que tengo instalado. |
+| Spring Boot | 3.5.16 | Lo que las empresas usan hoy en producción. Boot 4 es muy nuevo. |
+| MySQL | 8.4 | Base de datos relacional estándar (vía Docker). |
+| Spring Security + JWT | — | Autenticación stateless y autorización por roles. |
+| springdoc-openapi | 2.8.6 | Documentación interactiva (Swagger). |
+| JUnit + Mockito | — | Tests de la lógica de negocio. |
 
-## Estructura por capas
+## Arquitectura por capas
 
 ```
-controller  → recibe la petición HTTP, valida el formato. NO tiene lógica de negocio.
-service     → aquí vive la lógica (reglas, decisiones, transacciones).
-repository  → habla con MySQL. NADA de lógica.
-model       → las entidades (User, Account, Transaction, Role).
-dto         → objetos de entrada/salida de la API (no expongo las entidades directamente).
-config      → configuración (seguridad, CORS, etc.).
+Cliente → Controller → Service → Repository → MySQL
+          (HTTP)       (lógica)   (consultas)
 ```
 
-La regla: cada capa solo habla con la de al lado. El controller no sabe de base de datos y el
-repository no sabe de HTTP. Si cambio la BD, no toco la lógica.
+- **controller** — recibe la petición HTTP y valida el formato. No tiene lógica de negocio.
+- **service** — el cerebro: reglas, decisiones, transacciones.
+- **repository** — habla con MySQL. Nada de lógica.
+- **model** — entidades: `User`, `Account`, `Transaction`, `Role`.
+- **dto** — objetos de entrada/salida (no expongo las entidades: así no filtro el hash de la contraseña).
+- **config** — seguridad, filtro JWT, OpenAPI.
 
-## Decisiones técnicas
+## Endpoints
 
-- **El saldo es `BigDecimal`, nunca `double`.** Con `double` los decimales pierden céntimos por cómo
-  se representan en binario — inaceptable en algo que mueve dinero.
-- **Contraseñas con BCrypt**, nunca en texto plano.
-- **DTOs** en vez de exponer las entidades: así no devuelvo por accidente el hash de la contraseña.
-- *(Esta sección irá creciendo bloque a bloque, con el porqué de cada decisión.)*
+| Método | Ruta | Acceso | Qué hace |
+|---|---|---|---|
+| POST | `/auth/register` | público | crear usuario + cuenta |
+| POST | `/auth/login` | público | obtener token JWT |
+| GET | `/accounts/me` | cliente | ver mi cuenta y saldo |
+| GET | `/accounts/me/transactions` | cliente | mi historial (paginado) |
+| POST | `/transfers` | cliente | transferir a otra cuenta |
+| POST | `/admin/deposit` | admin | ingresar saldo simulado |
+| GET | `/admin/users` | admin | listar usuarios |
 
 ## Cómo arrancarlo
 
-> Pendiente de documentar cuando conectemos la base de datos (Bloque 2). De momento:
+Necesitas Java 21 y Docker.
 
 ```bash
-./mvnw clean compile
+# 1. Levantar MySQL
+docker compose up -d
+
+# 2. Arrancar la API
+./mvnw spring-boot:run
 ```
+
+- API en `http://localhost:8080`
+- **Swagger (probar la API en el navegador):** `http://localhost:8080/swagger-ui.html`
+
+Para probar un endpoint protegido en Swagger: haz `POST /auth/login`, copia el `token`, pulsa
+**Authorize** (arriba a la derecha) y pégalo.
+
+## Tests
+
+```bash
+./mvnw test
+```
+
+Los tests corren sobre una base de datos **H2 en memoria** (no necesitan Docker). Incluyen los casos
+límite de la transferencia: saldo insuficiente, transferencia a uno mismo y cuenta inexistente.
+
+## Decisiones técnicas (el porqué)
+
+- **El saldo es `BigDecimal`, nunca `double`.** `double` guarda en binario y pierde precisión
+  (`0.1 + 0.2 = 0.30000000000000004`). En dinero es inaceptable; `BigDecimal` es exacto.
+- **Transferencia `@Transactional`.** Restar de A y sumar a B pasan las dos o ninguna (rollback).
+- **Concurrencia con bloqueo pesimista + orden consistente.** Dos transferencias simultáneas sobre
+  la misma cuenta se serializan (`SELECT ... FOR UPDATE`), bloqueando siempre en orden de id
+  ascendente para evitar deadlocks. Así el dinero nunca se crea ni se pierde.
+- **Contraseñas con BCrypt**, nunca en texto plano (incluye *salt*).
+- **JWT firmado** (no cifrado): nunca guardo datos sensibles dentro; la firma garantiza integridad.
+- **DTOs** en vez de exponer entidades: para no devolver por accidente el hash de la contraseña.
+- **Manejo global de errores** (`@RestControllerAdvice`): respuestas JSON limpias con el código correcto.
 
 ## Estado
 
-🚧 En construcción, bloque a bloque. Hecho hasta ahora: **Bloque 0 — fundación del proyecto**.
+Backend funcional, seguro, testeado y documentado. Pendiente: frontend Angular y despliegue con Docker.
 
 ---
 
