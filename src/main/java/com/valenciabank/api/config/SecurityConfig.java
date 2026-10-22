@@ -35,8 +35,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll() // registro y login son publicos
-                        .anyRequest().authenticated())           // el resto exige estar autenticado
+                        .requestMatchers("/auth/**").permitAll()      // registro y login son publicos
+                        .requestMatchers("/admin/**").hasRole("ADMIN") // solo ADMIN (busca la autoridad ROLE_ADMIN)
+                        .anyRequest().authenticated())                // el resto exige estar autenticado
                 // Nuestro filtro corre ANTES del de usuario/contrasena de Spring.
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
