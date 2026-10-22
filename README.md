@@ -56,18 +56,33 @@ Cliente → Controller → Service → Repository → MySQL
 
 ## Cómo arrancarlo
 
-Necesitas Java 21 y Docker.
+### Opción rápida (todo con Docker)
 
 ```bash
-# 1. Levantar MySQL
-docker compose up -d
+docker compose up --build
+```
 
-# 2. Arrancar la API
-./mvnw spring-boot:run
+Levanta **backend + MySQL** juntos. API en `http://localhost:8080`.
+
+### Opción desarrollo (Java + Maven)
+
+```bash
+docker compose up -d mysql    # solo la base de datos
+./mvnw spring-boot:run        # la API
 ```
 
 - API en `http://localhost:8080`
 - **Swagger (probar la API en el navegador):** `http://localhost:8080/swagger-ui.html`
+
+### Frontend (Angular)
+
+```bash
+cd frontend
+npm install
+npm start        # http://localhost:4200
+```
+
+Despliegue en la nube: ver [DEPLOY.md](DEPLOY.md).
 
 Para probar un endpoint protegido en Swagger: haz `POST /auth/login`, copia el `token`, pulsa
 **Authorize** (arriba a la derecha) y pégalo.
@@ -96,7 +111,11 @@ límite de la transferencia: saldo insuficiente, transferencia a uno mismo y cue
 
 ## Estado
 
-Backend funcional, seguro, testeado y documentado. Pendiente: frontend Angular y despliegue con Docker.
+App full-stack funcional: backend seguro (JWT + roles), testeado y documentado, frontend Angular, y
+empaquetado con Docker. 
+
+**Roadmap (mejoras futuras):** CI con GitHub Actions, migraciones con Flyway, tests de integración,
+límite de transferencia diario, estado de la transacción e idempotencia.
 
 ---
 

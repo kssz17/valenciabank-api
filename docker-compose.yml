@@ -11,6 +11,28 @@ services:
       - "3306:3306"
     volumes:
       - valenciabank_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: valenciabank-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      # Dentro de la red de Docker, MySQL se llama "mysql", no "localhost".
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/valenciabank
+      DB_USERNAME: ${DB_USERNAME:-valenciabank}
+      DB_PASSWORD: ${DB_PASSWORD:-valenciabank_dev}
+      JWT_SECRET: ${JWT_SECRET:-clave-de-desarrollo-valenciabank-cambiar-en-produccion-2026}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@valenciabank.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
+    ports:
+      - "8080:8080"
 
 volumes:
   valenciabank_mysql_data:
