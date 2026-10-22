@@ -1,5 +1,7 @@
 package com.valenciabank.api.service;
 
+import com.valenciabank.api.dto.AuthResponse;
+import com.valenciabank.api.dto.LoginRequest;
 import com.valenciabank.api.dto.RegisterRequest;
 import com.valenciabank.api.dto.RegisterResponse;
 import com.valenciabank.api.model.Account;
@@ -7,6 +9,8 @@ import com.valenciabank.api.model.Role;
 import com.valenciabank.api.model.User;
 import com.valenciabank.api.repository.AccountRepository;
 import com.valenciabank.api.repository.UserRepository;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +27,32 @@ public class AuthService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
     // Inyeccion por constructor: campos final, facil de testear, sin reflexion.
     public AuthService(UserRepository userRepository,
                        AccountRepository accountRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       AuthenticationManager authenticationManager,
+                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        // Spring verifica email + contrasena (contra el hash BCrypt). Si falla, lanza excepcion.
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
+
+        String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
+        return new AuthResponse(token);
     }
 
     // Crear usuario + cuenta debe ser atomico: o se crean los dos, o ninguno (rollback).

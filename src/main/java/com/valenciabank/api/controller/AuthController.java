@@ -1,5 +1,7 @@
 package com.valenciabank.api.controller;
 
+import com.valenciabank.api.dto.AuthResponse;
+import com.valenciabank.api.dto.LoginRequest;
 import com.valenciabank.api.dto.RegisterRequest;
 import com.valenciabank.api.dto.RegisterResponse;
 import com.valenciabank.api.service.AuthService;
@@ -26,5 +28,10 @@ public class AuthController {
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }
