@@ -2,6 +2,7 @@ package com.valenciabank.api.controller;
 
 import com.valenciabank.api.dto.AccountResponse;
 import com.valenciabank.api.dto.AmountRequest;
+import com.valenciabank.api.dto.CategorySummaryResponse;
 import com.valenciabank.api.dto.ProfileResponse;
 import com.valenciabank.api.dto.TransactionResponse;
 import com.valenciabank.api.service.AccountService;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/accounts")
@@ -44,12 +47,17 @@ public class AccountController {
     @PostMapping("/me/deposit")
     public ResponseEntity<AccountResponse> deposit(Authentication authentication,
                                                    @Valid @RequestBody AmountRequest request) {
-        return ResponseEntity.ok(accountService.deposit(authentication.getName(), request.amount()));
+        return ResponseEntity.ok(accountService.deposit(authentication.getName(), request));
     }
 
     @PostMapping("/me/withdraw")
     public ResponseEntity<AccountResponse> withdraw(Authentication authentication,
                                                     @Valid @RequestBody AmountRequest request) {
-        return ResponseEntity.ok(accountService.withdraw(authentication.getName(), request.amount()));
+        return ResponseEntity.ok(accountService.withdraw(authentication.getName(), request));
+    }
+
+    @GetMapping("/me/summary")
+    public ResponseEntity<List<CategorySummaryResponse>> spendingSummary(Authentication authentication) {
+        return ResponseEntity.ok(accountService.getSpendingByCategory(authentication.getName()));
     }
 }

@@ -70,6 +70,7 @@ public class TransferService {
         tx.setToAccount(destino);
         tx.setAmount(request.amount());
         tx.setType(TxType.TRANSFER);
+        tx.setDescription(request.description());
         transactionRepository.save(tx);
 
         log.info("Transferencia: {} de {} a {} (saldo origen {})", request.amount(),

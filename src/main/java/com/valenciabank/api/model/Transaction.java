@@ -48,6 +48,12 @@ public class Transaction {
     @Column(nullable = false)
     private TxType type;
 
+    // Categoria (COMIDA, TRANSPORTE...) y concepto libre: para llevar control de gastos.
+    private String category;
+
+    @Column(length = 140)
+    private String description;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -70,7 +70,7 @@ class TransferServiceTest {
         when(accountRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(cuentaLuis));
 
         TransferResponse resp = transferService.transfer("ana@demo.com",
-                new TransferRequest("ES-LUIS", new BigDecimal("300.00")));
+                new TransferRequest("ES-LUIS", new BigDecimal("300.00"), null));
 
         assertThat(cuentaAna.getBalance()).isEqualByComparingTo("700.00");
         assertThat(cuentaLuis.getBalance()).isEqualByComparingTo("800.00");
@@ -88,7 +88,7 @@ class TransferServiceTest {
         when(accountRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(cuentaLuis));
 
         assertThatThrownBy(() -> transferService.transfer("ana@demo.com",
-                new TransferRequest("ES-LUIS", new BigDecimal("300.00"))))
+                new TransferRequest("ES-LUIS", new BigDecimal("300.00"), null)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Saldo insuficiente");
 
@@ -104,7 +104,7 @@ class TransferServiceTest {
         when(accountRepository.findIdByAccountNumber("ES-ANA")).thenReturn(Optional.of(1L));
 
         assertThatThrownBy(() -> transferService.transfer("ana@demo.com",
-                new TransferRequest("ES-ANA", new BigDecimal("50.00"))))
+                new TransferRequest("ES-ANA", new BigDecimal("50.00"), null)))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("ti mismo");
 
@@ -118,7 +118,7 @@ class TransferServiceTest {
         when(accountRepository.findIdByAccountNumber("ES-XXX")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transferService.transfer("ana@demo.com",
-                new TransferRequest("ES-XXX", new BigDecimal("50.00"))))
+                new TransferRequest("ES-XXX", new BigDecimal("50.00"), null)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(transactionRepository, never()).save(any());
