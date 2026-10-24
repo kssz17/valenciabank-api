@@ -1,14 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Account, API_URL, Page, Transaction } from './models';
+import { Account, API_URL, Page, Profile, Transaction } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class BankService {
   constructor(private http: HttpClient) {}
 
-  getAccount(): Observable<Account> {
-    return this.http.get<Account>(`${API_URL}/accounts/me`);
+  getProfile(): Observable<Profile> {
+    return this.http.get<Profile>(`${API_URL}/accounts/me`);
   }
 
   getTransactions(): Observable<Page<Transaction>> {
@@ -17,5 +17,13 @@ export class BankService {
 
   transfer(toAccountNumber: string, amount: number): Observable<unknown> {
     return this.http.post(`${API_URL}/transfers`, { toAccountNumber, amount });
+  }
+
+  deposit(amount: number): Observable<Account> {
+    return this.http.post<Account>(`${API_URL}/accounts/me/deposit`, { amount });
+  }
+
+  withdraw(amount: number): Observable<Account> {
+    return this.http.post<Account>(`${API_URL}/accounts/me/withdraw`, { amount });
   }
 }

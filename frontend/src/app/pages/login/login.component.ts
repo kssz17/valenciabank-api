@@ -12,6 +12,13 @@ import { AuthService } from '../../core/auth.service';
         <div class="vb-brand" style="text-align:center;margin-bottom:4px;">Valencia<span>Bank</span></div>
         <p class="vb-muted" style="text-align:center;margin:0 0 24px;font-size:0.8rem;">Demo · dinero de juguete</p>
 
+        @if (mode() === 'register') {
+          <label class="vb-label">Nombre</label>
+          <input class="vb-input" [(ngModel)]="fullName" placeholder="Tu nombre" style="margin-bottom:16px;" />
+          <label class="vb-label">Localidad</label>
+          <input class="vb-input" [(ngModel)]="locality" placeholder="Tu ciudad" style="margin-bottom:16px;" />
+        }
+
         <label class="vb-label">Email</label>
         <input class="vb-input" type="email" [(ngModel)]="email" placeholder="tu@email.com" style="margin-bottom:16px;" />
 
@@ -44,6 +51,8 @@ export class LoginComponent {
   mode = signal<'login' | 'register'>('login');
   email = '';
   password = '';
+  fullName = '';
+  locality = '';
   error = signal<string | null>(null);
   ok = signal<string | null>(null);
   loading = signal(false);
@@ -75,7 +84,7 @@ export class LoginComponent {
         },
       });
     } else {
-      this.auth.register(this.email, this.password).subscribe({
+      this.auth.register(this.email, this.password, this.fullName, this.locality).subscribe({
         next: () => {
           this.loading.set(false);
           this.ok.set('Cuenta creada con 1000 € de bienvenida. Ya puedes entrar.');
