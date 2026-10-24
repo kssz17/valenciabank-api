@@ -19,7 +19,15 @@ export interface Transaction {
   toAccountNumber: string | null;
   amount: number;
   type: string;
+  category: string | null;
+  description: string | null;
   createdAt: string;
+}
+
+export interface CategorySummary {
+  category: string;
+  total: number;
+  count: number;
 }
 
 export interface Page<T> {

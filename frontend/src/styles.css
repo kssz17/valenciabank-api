@@ -169,3 +169,11 @@ body::before {
   margin-top: 10px;
 }
 .vb-upload input { display: none; }
+
+.vb-vcard {
+  background: #191712;
+  border: 1px solid var(--border-accent);
+  border-radius: 14px;
+  padding: 16px;
+  color: #fff;
+}

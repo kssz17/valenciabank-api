@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { BankService } from '../../core/bank.service';
-import { Profile, Transaction } from '../../core/models';
+import { CategorySummary, Profile, Transaction } from '../../core/models';
 
 type Op = 'transfer' | 'deposit' | 'withdraw';
 type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
+
+interface Cat { key: string; label: string; icon: string; }
 
 @Component({
   selector: 'app-dashboard',
@@ -23,7 +25,7 @@ type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
 
         <!-- ========= IZQUIERDA ========= -->
         <div class="vb-col">
-          <!-- 1. Perfil -->
+          <!-- Perfil -->
           <div class="vb-card" style="text-align:center;">
             @if (avatar()) {
               <img class="vb-avatar" [src]="avatar()" alt="avatar" style="margin:0 auto;" />
@@ -32,36 +34,54 @@ type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
             }
             <div style="font-weight:600;margin-top:12px;font-size:1.05rem;">{{ displayName() }}</div>
             <div class="vb-muted" style="font-size:0.82rem;margin-top:2px;">
-              {{ profile()?.locality || 'Localidad sin especificar' }}
+              <i class="ti ti-map-pin" style="font-size:14px;vertical-align:-2px;"></i>
+              {{ profile()?.locality || 'Sin localidad' }}
             </div>
-            <label class="vb-upload">
-              Cambiar foto
+            <label class="vb-upload"><i class="ti ti-camera" style="font-size:14px;vertical-align:-2px;"></i> Cambiar foto
               <input type="file" accept="image/*" (change)="onAvatar($event)" />
             </label>
           </div>
 
-          <!-- 2. Cuenta -->
-          <div class="vb-card">
-            <h3 style="margin:0 0 12px;font-size:0.95rem;font-weight:600;">Mi cuenta</h3>
-            <div class="vb-stat"><span class="vb-secondary">Email</span> <b style="font-size:0.8rem;">{{ profile()?.email }}</b></div>
-            <div class="vb-stat"><span class="vb-secondary">IBAN</span></div>
-            <div style="font-family:monospace;font-size:0.78rem;color:var(--accent-soft);word-break:break-all;">
-              {{ profile()?.accountNumber }}
+          <!-- Tarjeta virtual -->
+          <div class="vb-vcard">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span style="font-size:0.72rem;color:#cbb88a;">Tarjeta ValenciaBank</span>
+              <i class="ti ti-wifi" style="font-size:16px;color:#ffd659;transform:rotate(90deg);"></i>
+            </div>
+            <div style="width:34px;height:24px;border-radius:5px;background:var(--accent);margin:6px 0;"></div>
+            <div style="font-family:monospace;font-size:0.92rem;letter-spacing:2px;">{{ cardNumber() }}</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">
+              <span style="font-size:0.78rem;">{{ displayName() }}</span>
+              <span style="font-size:0.9rem;font-weight:600;color:var(--accent-soft);">{{ (profile()?.balance ?? 0) | number:'1.2-2' }} &euro;</span>
             </div>
           </div>
 
-          <!-- 3. Resumen y filtros -->
+          <!-- Gastos por categoria -->
           <div class="vb-card">
-            <h3 style="margin:0 0 10px;font-size:0.95rem;font-weight:600;">Resumen</h3>
-            <div class="vb-stat"><span class="vb-secondary">Ingresos</span> <b>{{ counts().deposits }}</b></div>
-            <div class="vb-stat"><span class="vb-secondary">Retiros</span> <b>{{ counts().withdrawals }}</b></div>
-            <div class="vb-stat"><span class="vb-secondary">Transferencias</span> <b>{{ counts().transfers }}</b></div>
-            <div class="vb-stat"><span class="vb-secondary">Total movimientos</span> <b>{{ transactions().length }}</b></div>
-            <p class="vb-secondary" style="font-size:0.78rem;margin:14px 0 8px;">Filtrar historial</p>
+            <h3 style="margin:0 0 12px;font-size:0.95rem;font-weight:600;">Gastos por categoria</h3>
+            @if (summary().length === 0) {
+              <p class="vb-muted" style="font-size:0.82rem;">Aun no has registrado gastos. Usa <b>Retirar</b> para anotar uno.</p>
+            }
+            @for (s of summary(); track s.category) {
+              <div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px;">
+                  <span><i class="ti {{ iconFor(s.category) }}" style="font-size:15px;vertical-align:-2px;color:var(--accent);"></i> {{ labelFor(s.category) }}</span>
+                  <b>{{ s.total | number:'1.2-2' }} &euro;</b>
+                </div>
+                <div style="height:6px;background:#2a2a2a;border-radius:999px;overflow:hidden;">
+                  <div style="height:100%;background:var(--gradient);" [style.width.%]="barPct(s)"></div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Filtros -->
+          <div class="vb-card">
+            <p class="vb-secondary" style="font-size:0.8rem;margin:0 0 8px;">Filtrar historial</p>
             <div class="vb-chips">
               <span class="vb-chip" [class.active]="filter()==='all'" (click)="filter.set('all')">Todos</span>
               <span class="vb-chip" [class.active]="filter()==='DEPOSIT'" (click)="filter.set('DEPOSIT')">Ingresos</span>
-              <span class="vb-chip" [class.active]="filter()==='WITHDRAWAL'" (click)="filter.set('WITHDRAWAL')">Retiros</span>
+              <span class="vb-chip" [class.active]="filter()==='WITHDRAWAL'" (click)="filter.set('WITHDRAWAL')">Gastos</span>
               <span class="vb-chip" [class.active]="filter()==='sent'" (click)="filter.set('sent')">Enviadas</span>
               <span class="vb-chip" [class.active]="filter()==='received'" (click)="filter.set('received')">Recibidas</span>
             </div>
@@ -80,13 +100,19 @@ type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
           <div class="vb-card">
             <h3 style="margin:0 0 14px;font-size:1rem;font-weight:600;">Movimientos</h3>
             @if (filtered().length === 0) {
-              <p class="vb-muted" style="font-size:0.9rem;">No hay movimientos para este filtro.</p>
+              <div style="text-align:center;padding:24px 0;">
+                <i class="ti ti-inbox" style="font-size:38px;color:var(--text-muted);"></i>
+                <p class="vb-muted" style="font-size:0.9rem;margin-top:8px;">Nada por aqui todavia. Registra tu primer movimiento.</p>
+              </div>
             }
             @for (t of filtered(); track t.id) {
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-soft);">
-                <div>
-                  <div style="font-weight:500;font-size:0.9rem;">{{ label(t) }}</div>
-                  <div class="vb-muted" style="font-size:0.74rem;font-family:monospace;">{{ counterparty(t) }}</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border-soft);">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--bg-card-hover);display:flex;align-items:center;justify-content:center;">
+                  <i class="ti {{ txIcon(t) }}" style="font-size:18px;" [style.color]="dir(t)==='in' ? 'var(--green)' : 'var(--accent)'"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:500;font-size:0.9rem;">{{ primaryText(t) }}</div>
+                  <div class="vb-muted" style="font-size:0.74rem;">{{ secondaryText(t) }}</div>
                 </div>
                 <div style="text-align:right;">
                   <div style="font-weight:600;font-size:0.95rem;" [style.color]="dir(t)==='in' ? 'var(--green)' : 'var(--red)'">
@@ -106,7 +132,7 @@ type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
             <div class="vb-seg">
               <button [class.active]="op()==='transfer'" (click)="setOp('transfer')">Transferir</button>
               <button [class.active]="op()==='deposit'" (click)="setOp('deposit')">Ingresar</button>
-              <button [class.active]="op()==='withdraw'" (click)="setOp('withdraw')">Retirar</button>
+              <button [class.active]="op()==='withdraw'" (click)="setOp('withdraw')">Gastar</button>
             </div>
 
             @if (op()==='transfer') {
@@ -114,8 +140,18 @@ type Filter = 'all' | 'DEPOSIT' | 'WITHDRAWAL' | 'sent' | 'received';
               <input class="vb-input" [(ngModel)]="toAccount" placeholder="ES..." style="margin-bottom:14px;" />
             }
 
+            @if (op()==='withdraw') {
+              <label class="vb-label">Categoria</label>
+              <select class="vb-input" [(ngModel)]="category" style="margin-bottom:14px;">
+                @for (c of categories; track c.key) { <option [value]="c.key">{{ c.label }}</option> }
+              </select>
+            }
+
             <label class="vb-label">Importe (&euro;)</label>
-            <input class="vb-input" type="number" [(ngModel)]="amount" placeholder="0.00" min="0.01" step="0.01" style="margin-bottom:18px;" />
+            <input class="vb-input" type="number" [(ngModel)]="amount" placeholder="0.00" min="0.01" step="0.01" style="margin-bottom:14px;" />
+
+            <label class="vb-label">Concepto (opcional)</label>
+            <input class="vb-input" [(ngModel)]="description" [placeholder]="conceptPlaceholder()" style="margin-bottom:18px;" />
 
             <button class="vb-btn" (click)="submit()" [disabled]="loading()">
               {{ loading() ? 'Procesando...' : btnLabel() }}
@@ -133,27 +169,32 @@ export class DashboardComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
 
+  categories: Cat[] = [
+    { key: 'COMIDA', label: 'Comida', icon: 'ti-shopping-cart' },
+    { key: 'TRANSPORTE', label: 'Transporte', icon: 'ti-car' },
+    { key: 'OCIO', label: 'Ocio', icon: 'ti-movie' },
+    { key: 'HOGAR', label: 'Hogar', icon: 'ti-home' },
+    { key: 'SALUD', label: 'Salud', icon: 'ti-heart' },
+    { key: 'COMPRAS', label: 'Compras', icon: 'ti-shopping-bag' },
+    { key: 'SERVICIOS', label: 'Servicios', icon: 'ti-bolt' },
+    { key: 'OTROS', label: 'Otros', icon: 'ti-dots' },
+  ];
+
   profile = signal<Profile | null>(null);
   transactions = signal<Transaction[]>([]);
+  summary = signal<CategorySummary[]>([]);
   avatar = signal<string | null>(null);
 
-  op = signal<Op>('transfer');
+  op = signal<Op>('withdraw');
   filter = signal<Filter>('all');
 
   toAccount = '';
   amount: number | null = null;
+  category = 'COMIDA';
+  description = '';
   error = signal<string | null>(null);
   ok = signal<string | null>(null);
   loading = signal(false);
-
-  counts = computed(() => {
-    const txs = this.transactions();
-    return {
-      deposits: txs.filter(t => t.type === 'DEPOSIT').length,
-      withdrawals: txs.filter(t => t.type === 'WITHDRAWAL').length,
-      transfers: txs.filter(t => t.type === 'TRANSFER').length,
-    };
-  });
 
   filtered = computed(() => {
     const acct = this.profile()?.accountNumber;
@@ -173,13 +214,9 @@ export class DashboardComponent implements OnInit {
   }
 
   reload(): void {
-    this.bank.getProfile().subscribe({
-      next: p => {
-        this.profile.set(p);
-        this.loadAvatar();
-      },
-    });
+    this.bank.getProfile().subscribe({ next: p => { this.profile.set(p); this.loadAvatar(); } });
     this.bank.getTransactions().subscribe({ next: page => this.transactions.set(page.content) });
+    this.bank.getSummary().subscribe({ next: s => this.summary.set(s) });
   }
 
   setOp(o: Op): void {
@@ -189,26 +226,26 @@ export class DashboardComponent implements OnInit {
   }
 
   btnLabel(): string {
-    return this.op() === 'transfer' ? 'Enviar dinero' : this.op() === 'deposit' ? 'Ingresar' : 'Retirar';
+    return this.op() === 'transfer' ? 'Enviar dinero' : this.op() === 'deposit' ? 'Ingresar' : 'Registrar gasto';
+  }
+
+  conceptPlaceholder(): string {
+    return this.op() === 'withdraw' ? 'Ej: Mercadona, gasolina...' : this.op() === 'deposit' ? 'Ej: Nomina' : 'Ej: Alquiler';
   }
 
   submit(): void {
     this.error.set(null);
     this.ok.set(null);
-    if (!this.amount || this.amount <= 0) {
-      this.error.set('Indica un importe valido');
-      return;
-    }
-    if (this.op() === 'transfer' && !this.toAccount) {
-      this.error.set('Indica la cuenta destino');
-      return;
-    }
+    if (!this.amount || this.amount <= 0) { this.error.set('Indica un importe valido'); return; }
+    if (this.op() === 'transfer' && !this.toAccount) { this.error.set('Indica la cuenta destino'); return; }
     this.loading.set(true);
+
     const done = (msg: string) => {
       this.loading.set(false);
       this.ok.set(msg);
       this.toAccount = '';
       this.amount = null;
+      this.description = '';
       this.reload();
     };
     const fail = (e: { error?: { message?: string; error?: string } }) => {
@@ -217,15 +254,72 @@ export class DashboardComponent implements OnInit {
     };
 
     if (this.op() === 'transfer') {
-      this.bank.transfer(this.toAccount, this.amount).subscribe({ next: () => done('Transferencia realizada'), error: fail });
+      this.bank.transfer(this.toAccount, this.amount, this.description).subscribe({ next: () => done('Transferencia realizada'), error: fail });
     } else if (this.op() === 'deposit') {
-      this.bank.deposit(this.amount).subscribe({ next: () => done('Ingreso realizado'), error: fail });
+      this.bank.deposit(this.amount, 'INGRESO', this.description).subscribe({ next: () => done('Ingreso realizado'), error: fail });
     } else {
-      this.bank.withdraw(this.amount).subscribe({ next: () => done('Retiro realizado'), error: fail });
+      this.bank.withdraw(this.amount, this.category, this.description).subscribe({ next: () => done('Gasto registrado'), error: fail });
     }
   }
 
-  // --- avatar (se guarda en el navegador, demo) ---
+  barPct(s: CategorySummary): number {
+    const max = Math.max(...this.summary().map(x => x.total), 1);
+    return Math.round((s.total / max) * 100);
+  }
+
+  iconFor(cat: string | null): string {
+    const c = this.categories.find(x => x.key === cat);
+    if (c) return c.icon;
+    if (cat === 'INGRESO') return 'ti-cash';
+    return 'ti-circle';
+  }
+
+  labelFor(cat: string | null): string {
+    const c = this.categories.find(x => x.key === cat);
+    if (c) return c.label;
+    return cat === 'INGRESO' ? 'Ingreso' : (cat || 'Otros');
+  }
+
+  txIcon(t: Transaction): string {
+    if (t.type === 'DEPOSIT') return 'ti-arrow-down-circle';
+    if (t.type === 'WITHDRAWAL') return this.iconFor(t.category);
+    return 'ti-arrows-exchange';
+  }
+
+  primaryText(t: Transaction): string {
+    if (t.description) return t.description;
+    if (t.type === 'DEPOSIT') return 'Ingreso';
+    if (t.type === 'WITHDRAWAL') return this.labelFor(t.category);
+    return this.dir(t) === 'in' ? 'Transferencia recibida' : 'Transferencia enviada';
+  }
+
+  secondaryText(t: Transaction): string {
+    if (t.type === 'DEPOSIT') return 'Ingreso de efectivo';
+    if (t.type === 'WITHDRAWAL') return this.labelFor(t.category);
+    return this.dir(t) === 'in' ? (t.fromAccountNumber ?? 'Banco') : (t.toAccountNumber ?? '-');
+  }
+
+  cardNumber(): string {
+    const acct = this.profile()?.accountNumber ?? '';
+    return '••••  ••••  ••••  ' + (acct.slice(-4) || '0000');
+  }
+
+  dir(t: Transaction): 'in' | 'out' {
+    if (t.type === 'DEPOSIT') return 'in';
+    if (t.type === 'WITHDRAWAL') return 'out';
+    return t.toAccountNumber === this.profile()?.accountNumber ? 'in' : 'out';
+  }
+
+  displayName(): string {
+    return this.profile()?.fullName || this.profile()?.email || 'Usuario';
+  }
+
+  initials(): string {
+    const name = this.profile()?.fullName || this.profile()?.email || '?';
+    const parts = name.trim().split(/\s+/);
+    return (parts.length > 1 ? parts[0][0] + parts[1][0] : name.slice(0, 2)).toUpperCase();
+  }
+
   onAvatar(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -247,35 +341,6 @@ export class DashboardComponent implements OnInit {
 
   private avatarKey(): string {
     return 'vb_avatar_' + (this.profile()?.email ?? 'x');
-  }
-
-  // --- presentacion de movimientos ---
-  dir(t: Transaction): 'in' | 'out' {
-    if (t.type === 'DEPOSIT') return 'in';
-    if (t.type === 'WITHDRAWAL') return 'out';
-    return t.toAccountNumber === this.profile()?.accountNumber ? 'in' : 'out';
-  }
-
-  label(t: Transaction): string {
-    if (t.type === 'DEPOSIT') return 'Ingreso';
-    if (t.type === 'WITHDRAWAL') return 'Retiro';
-    return this.dir(t) === 'in' ? 'Recibida' : 'Enviada';
-  }
-
-  counterparty(t: Transaction): string {
-    if (t.type === 'DEPOSIT') return 'Ingreso de efectivo';
-    if (t.type === 'WITHDRAWAL') return 'Retiro de efectivo';
-    return this.dir(t) === 'in' ? (t.fromAccountNumber ?? 'Banco') : (t.toAccountNumber ?? '-');
-  }
-
-  displayName(): string {
-    return this.profile()?.fullName || this.profile()?.email || 'Usuario';
-  }
-
-  initials(): string {
-    const name = this.profile()?.fullName || this.profile()?.email || '?';
-    const parts = name.trim().split(/\s+/);
-    return (parts.length > 1 ? parts[0][0] + parts[1][0] : name.slice(0, 2)).toUpperCase();
   }
 
   logout(): void {
