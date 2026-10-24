@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { BankService } from '../../core/bank.service';
+import { ThemeService } from '../../core/theme.service';
 import { CategorySummary, Profile, Transaction } from '../../core/models';
 
 type Op = 'transfer' | 'deposit' | 'withdraw';
@@ -18,7 +19,12 @@ interface Cat { key: string; label: string; icon: string; }
     <div class="vb-shell" style="max-width:1120px;margin:0 auto;padding:24px 20px 60px;">
       <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
         <div class="vb-brand">Valencia<span>Bank</span></div>
-        <button class="vb-btn vb-btn-ghost" style="width:auto;padding:8px 16px;" (click)="logout()">Salir</button>
+        <div style="display:flex;gap:10px;">
+          <button class="vb-btn vb-btn-ghost" style="width:auto;padding:8px 12px;" (click)="theme.toggle()" aria-label="Cambiar tema">
+            <i class="ti" [class.ti-moon]="theme.theme()==='light'" [class.ti-sun]="theme.theme()==='dark'" style="font-size:16px;vertical-align:-2px;"></i>
+          </button>
+          <button class="vb-btn vb-btn-ghost" style="width:auto;padding:8px 16px;" (click)="logout()">Salir</button>
+        </div>
       </header>
 
       <div class="vb-grid">
@@ -48,11 +54,11 @@ interface Cat { key: string; label: string; icon: string; }
               <span style="font-size:0.72rem;color:#cbb88a;">Tarjeta ValenciaBank</span>
               <i class="ti ti-wifi" style="font-size:16px;color:#ffd659;transform:rotate(90deg);"></i>
             </div>
-            <div style="width:34px;height:24px;border-radius:5px;background:var(--accent);margin:6px 0;"></div>
+            <div style="width:34px;height:24px;border-radius:5px;background:#ffbb00;margin:6px 0;"></div>
             <div style="font-family:monospace;font-size:0.92rem;letter-spacing:2px;">{{ cardNumber() }}</div>
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">
               <span style="font-size:0.78rem;">{{ displayName() }}</span>
-              <span style="font-size:0.9rem;font-weight:600;color:var(--accent-soft);">{{ (profile()?.balance ?? 0) | number:'1.2-2' }} &euro;</span>
+              <span style="font-size:0.9rem;font-weight:600;color:#ffd659;">{{ (profile()?.balance ?? 0) | number:'1.2-2' }} &euro;</span>
             </div>
           </div>
 
@@ -68,7 +74,7 @@ interface Cat { key: string; label: string; icon: string; }
                   <span><i class="ti {{ iconFor(s.category) }}" style="font-size:15px;vertical-align:-2px;color:var(--accent);"></i> {{ labelFor(s.category) }}</span>
                   <b>{{ s.total | number:'1.2-2' }} &euro;</b>
                 </div>
-                <div style="height:6px;background:#2a2a2a;border-radius:999px;overflow:hidden;">
+                <div style="height:6px;background:var(--track);border-radius:999px;overflow:hidden;">
                   <div style="height:100%;background:var(--gradient);" [style.width.%]="barPct(s)"></div>
                 </div>
               </div>
@@ -168,6 +174,7 @@ export class DashboardComponent implements OnInit {
   private bank = inject(BankService);
   private auth = inject(AuthService);
   private router = inject(Router);
+  theme = inject(ThemeService);
 
   categories: Cat[] = [
     { key: 'COMIDA', label: 'Comida', icon: 'ti-shopping-cart' },
