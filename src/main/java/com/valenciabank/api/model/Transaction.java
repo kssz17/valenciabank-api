@@ -36,8 +36,9 @@ public class Transaction {
     @JoinColumn(name = "from_account_id")
     private Account fromAccount;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "to_account_id", nullable = false)
+    // Nullable: en un retiro (WITHDRAWAL) el dinero sale fuera, sin cuenta destino.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_account_id")
     private Account toAccount;
 
     @Column(nullable = false, precision = 19, scale = 2)

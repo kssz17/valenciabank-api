@@ -14,6 +14,10 @@ public record RegisterRequest(
 
         @NotBlank(message = "La contrasena es obligatoria")
         @Size(min = 8, message = "La contrasena debe tener al menos 8 caracteres")
-        String password
+        String password,
+
+        // Opcionales: dan vida al perfil del usuario.
+        String fullName,
+        String locality
 ) {
 }

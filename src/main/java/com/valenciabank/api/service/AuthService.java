@@ -71,6 +71,8 @@ public class AuthService {
 
         User user = new User();
         user.setEmail(request.email());
+        user.setFullName(request.fullName());
+        user.setLocality(request.locality());
         user.setPasswordHash(passwordEncoder.encode(request.password())); // BCrypt, nunca texto plano
         user.setRole(Role.ROLE_USER);
         user = userRepository.save(user);
