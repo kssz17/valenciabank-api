@@ -1,43 +1,61 @@
-# Despliegue de ValenciaBank
+# Despliegue de ValenciaBank (gratis, para una demo)
 
-## Opción A — Local con Docker (todo con un comando)
+Son 3 piezas: **frontend** (Vercel), **backend** (Railway) y **base de datos** MySQL (Railway).
+Orden: primero el backend + base de datos, luego el frontend (necesita la URL del backend).
 
-Levanta **backend + MySQL** juntos:
+> Nota honesta: los planes gratuitos pueden "dormir" el backend tras un rato sin uso (la primera
+> visita tarda unos segundos en despertar) y tienen límites. Para una demo con amigos, sobra.
+
+---
+
+## Paso 1 — Backend + base de datos en Railway
+
+1. Entra en [railway.app](https://railway.app) y regístrate con tu GitHub.
+2. **New Project** → **Deploy from GitHub repo** → elige `kssz17/valenciabank-api`.
+   Railway detecta el `Dockerfile` y construye el backend.
+3. En el proyecto, **New** → **Database** → **Add MySQL**. Railway crea la BD y sus variables.
+4. Abre el servicio del **backend** → pestaña **Variables** → añade estas (referencian la BD de Railway):
+
+   | Variable | Valor |
+   |---|---|
+   | `SPRING_DATASOURCE_URL` | `jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}` |
+   | `DB_USERNAME` | `${{MySQL.MYSQLUSER}}` |
+   | `DB_PASSWORD` | `${{MySQL.MYSQLPASSWORD}}` |
+   | `JWT_SECRET` | una clave larga e inventada (mínimo 32 caracteres) |
+   | `ADMIN_EMAIL` | tu email de admin |
+   | `ADMIN_PASSWORD` | una contraseña de admin |
+   | `APP_CORS_ORIGINS` | lo rellenas en el Paso 3 con tu URL de Vercel |
+
+5. En **Settings** del backend → **Networking** → **Generate Domain**. Copia la URL pública
+   (ej. `https://valenciabank-api-production.up.railway.app`). **Esa es la URL de tu backend.**
+6. Comprueba que vive: abre `https://TU-BACKEND.up.railway.app/swagger-ui.html`.
+
+## Paso 2 — Conectar el frontend al backend
+
+1. En `frontend/src/environments/environment.prod.ts`, pon tu URL del backend en `apiUrl`.
+2. Haz commit y push (eso disparará el build de Vercel en el Paso 3).
+
+## Paso 3 — Frontend en Vercel
+
+1. Entra en [vercel.com](https://vercel.com) y regístrate con GitHub.
+2. **Add New** → **Project** → importa `kssz17/valenciabank-api`.
+3. En la configuración del proyecto:
+   - **Root Directory**: `frontend`
+   - Framework: **Angular** (lo detecta solo).
+4. **Deploy**. Al terminar, copia tu URL de Vercel (ej. `https://valenciabank.vercel.app`).
+5. Vuelve a **Railway** → variable `APP_CORS_ORIGINS` del backend → ponla a:
+   `https://TU-APP.vercel.app` (tu URL de Vercel). Railway redeploya el backend.
+
+## Listo
+
+Comparte la URL de Vercel con tu familia y amigos. 🎉 Se registran, usan la demo, y tú mides
+cuántos la usaron (eso lo cuentas en el CV).
+
+## Local (como hasta ahora)
 
 ```bash
-docker compose up --build
+docker compose up -d mysql
+./mvnw spring-boot:run
+# en otra terminal:
+cd frontend && npm start
 ```
-
-- API: `http://localhost:8080`
-- Swagger: `http://localhost:8080/swagger-ui.html`
-
-Para pararlo: `docker compose down` (añade `-v` para borrar también los datos).
-
-> El `docker-compose.yml` pasa la configuración por variables de entorno. Para producción,
-> cambia `JWT_SECRET`, `DB_PASSWORD` y `ADMIN_PASSWORD` por valores propios (nunca los subas al repo).
-
-## Opción B — En la nube (para que tu familia la use por internet)
-
-La idea: **backend + MySQL** en un sitio, **frontend** en otro.
-
-### Backend + MySQL (Railway o Render)
-1. Crea una cuenta en [Railway](https://railway.app) o [Render](https://render.com).
-2. Conecta tu repo de GitHub `kssz17/valenciabank-api`.
-3. Añade un servicio de **MySQL** (lo ofrecen gestionado).
-4. Despliega el backend desde el `Dockerfile`. Configura las variables de entorno:
-   - `SPRING_DATASOURCE_URL` → la URL del MySQL gestionado.
-   - `DB_USERNAME`, `DB_PASSWORD` → las del MySQL gestionado.
-   - `JWT_SECRET` → una clave larga y secreta (NUEVA, no la de desarrollo).
-   - `ADMIN_EMAIL`, `ADMIN_PASSWORD` → tu admin.
-5. Anota la URL pública del backend (ej. `https://valenciabank-api.up.railway.app`).
-
-### Frontend (Vercel)
-1. En `frontend/src/app/core/models.ts`, cambia `API_URL` por la URL pública del backend.
-2. En el backend, añade esa URL de Vercel a los orígenes permitidos de CORS (`SecurityConfig`).
-3. Sube el frontend a [Vercel](https://vercel.com) (detecta Angular automáticamente).
-4. Comparte el enlace de Vercel con amigos y familia. 🎉
-
-## Medir usuarios reales (para el CV)
-
-Pide a quien la use que se registre y haga transferencias de juguete entre ellos. Cuenta cuántos
-usuarios y operaciones hubo: *"demo funcional con N usuarios reales que realizaron N operaciones"*.
